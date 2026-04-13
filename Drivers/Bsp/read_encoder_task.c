@@ -2,7 +2,7 @@
 // #include "encoder_forward_app.h"
 
 // #define LOGD(...)  printf(__VA_ARGS__)
-#define LOGD(...) printf(__VA_ARGS__)
+#define LOGD(...) //printf(__VA_ARGS__)
 
 #define LOGI(...) printf(__VA_ARGS__)
 #define LOGE(...) printf(__VA_ARGS__)

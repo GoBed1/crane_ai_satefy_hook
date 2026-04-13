@@ -7,7 +7,7 @@ extern IWDG_HandleTypeDef hiwdg1;
 void StartHeartbeatTask(void *argument)
 {
     HAL_GPIO_WritePin(LED2_GPIO_Port, LED2_Pin, GPIO_PIN_SET);
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 5; i++)
     {
         HAL_IWDG_Refresh(&hiwdg1);
         osDelay(1000);
@@ -51,7 +51,7 @@ void StartHeartbeatTask(void *argument)
                     printf("RFID ");
                 printf("\r\n");
             }
-            // If you don't clock in for 3 seconds, it means you're completely dead and the watchdog reset system has been triggered
+            // If you don't clock in within 7 seconds, the watchdog reset system has been triggered
             else if (error_count >= 7)
             {
                 printf("[FATAL ERROR] Watchdog will bite NOW! System rebooting...\r\n");

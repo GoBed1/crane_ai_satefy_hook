@@ -10,8 +10,8 @@ extern "C" {
 // reg[112]：开机时间，例如0x0600=06:00
 #define STATUS_POWER_OFF_TIME   111
 #define STATUS_POWER_ON_TIME    112
-#define POWER_OFF_DEFAULT       ((12 << 8) | 10)
-#define POWER_ON_DEFAULT        ((12  << 8) | 12)
+#define POWER_OFF_DEFAULT       ((10 << 8) | 22)
+#define POWER_ON_DEFAULT        ((10  << 8) | 24)
 #define RTC_TIME                114
 #define STANDBY_ENABLE            115
 
