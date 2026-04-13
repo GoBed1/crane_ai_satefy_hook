@@ -2,10 +2,12 @@
 // #include "encoder_forward_app.h"
 
 // #define LOGD(...)  printf(__VA_ARGS__)
-#define LOGD(...) //printf(__VA_ARGS__)
+#define LOGD(...) printf(__VA_ARGS__)
 
 #define LOGI(...) printf(__VA_ARGS__)
 #define LOGE(...) printf(__VA_ARGS__)
+
+ volatile uint8_t g_task_alive_flags;
 
 #define CMD_LED_SWITCH 0
 #define STATUS_LED_SWITCH 100
@@ -482,7 +484,7 @@ void ai_safy_master_thread(void *argument)
 
     for (;;)
     {
-
+        g_task_alive_flags |= TASK_AI_SAFY_ALIVE;
         // 设置音量
         now_volume = modbus_registers[103];
 
@@ -684,17 +686,6 @@ void ai_safy_master_thread(void *argument)
             }
         }
 
-        // // 心跳逻辑 & GPS数据轮询
-        // if (xTaskGetTickCount() - last_heartbeat >= pdMS_TO_TICKS(1000))
-        // {
-        //     last_heartbeat += pdMS_TO_TICKS(1000);
-
-        //     // 心跳值递增并处理溢出
-        //     modbus_registers[104] = (modbus_registers[104] + 1) % 65536;
-
-        //     LOGD("[Heartbeat] reg[104] = %d\r\n", modbus_registers[104]);
-        // }
-
         osDelay(500);
     }
 }
@@ -707,13 +698,13 @@ void RFID_master_thread(void *argument)
     TickType_t last_check = xTaskGetTickCount();
     for (;;)
     {
-
+        g_task_alive_flags |= TASK_RFID_ALIVE;
         EventBits_t uxBits = xEventGroupWaitBits(
             eg,            // 事件组
             EVENT_RFID_RX, // 等待这个事件
             pdTRUE,        // 自动清除标志
             pdFALSE,       // 不需要等待所有位
-            portMAX_DELAY  // 无限等待
+            pdMS_TO_TICKS(500)   // 有看门狗的超时时间，这里是500ms
         );
         if ((uxBits & EVENT_RFID_RX) != 0)
         {
@@ -763,7 +754,7 @@ void gps_standby_thread(void *argument)
 
     for (;;)
     {
-
+        g_task_alive_flags |= TASK_GPS_ALIVE;
         // 每1s轮询一次GPS数据
         // 每1s轮询一次GPS数据
         update_gps_app();
@@ -790,6 +781,7 @@ void relay_heartbeat_thread(void *argument)
     uint8_t relay_is_on = 1;
     for (;;)
     {
+        g_task_alive_flags |= TASK_RELAY_ALIVE;
         uint16_t current_heartbeat = modbus_registers[STATUS_HEART_BEAT];
 
         // 1. 检查心跳是否有变化

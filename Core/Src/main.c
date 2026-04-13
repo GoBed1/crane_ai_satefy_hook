@@ -62,7 +62,38 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void AutoConfig_IWDG_OptionBytes(void)
+{
+    FLASH_OBProgramInitTypeDef OBInit;
+    HAL_FLASHEx_OBGetConfig(&OBInit);
 
+    // 检查 IWDG 在 Standby 或 Stop 模式下是否为 ACTIVE (活跃/运行) 状态
+    if (((OBInit.USERConfig & OB_IWDG_STDBY_ACTIVE) == OB_IWDG_STDBY_ACTIVE) ||
+        ((OBInit.USERConfig & OB_IWDG_STOP_ACTIVE) == OB_IWDG_STOP_ACTIVE))
+    {
+        printf("[INFO] Updating Option Bytes to FREEZE IWDG in Sleep mode...\r\n");
+        
+        HAL_FLASH_Unlock();
+        HAL_FLASH_OB_Unlock();
+
+        OBInit.OptionType = OPTIONBYTE_USER;
+        OBInit.USERType   = OB_USER_IWDG_STDBY | OB_USER_IWDG_STOP; 
+        OBInit.USERConfig = OB_IWDG_STDBY_FREEZE | OB_IWDG_STOP_FREEZE;
+
+        if (HAL_FLASHEx_OBProgram(&OBInit) != HAL_OK)
+        {
+            printf("[ERROR] Option Bytes Write Failed!\r\n");
+            HAL_FLASH_OB_Lock();
+            HAL_FLASH_Lock();
+            return;
+        }
+        printf("[INFO] OB Updated. Rebooting!\r\n");
+        HAL_FLASH_OB_Launch(); // 执行这句会引发系统硬件复位重启
+        
+        HAL_FLASH_OB_Lock();
+        HAL_FLASH_Lock();
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -86,6 +117,8 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
+  AutoConfig_IWDG_OptionBytes();// 自动配置看门狗休眠冻结（第一次烧录新板子走到这里会重启一次，后续正常）
+  __HAL_DBGMCU_FREEZE_IWDG1();// 调试器暂停时，自动暂停看门狗（防止用 ST-Link 打断点单步调试时板子一直复位）
   /* USER CODE END Init */
 
   /* Configure the system clock */

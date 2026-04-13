@@ -29,7 +29,7 @@ uint32_t get_time_ms(void)
 osThreadId_t HeartbeatTaskHandle;
 const osThreadAttr_t HeartbeatTask_attributes = {
   .name = "HeartbeatTask",
-  .stack_size = 256 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 
