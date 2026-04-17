@@ -284,35 +284,60 @@ uint16_t modbus_master_buf2[128] = {0};
 // 喇叭逻辑处理函数
 void buzzer_logic(void)
 {
-    // 算目标模式：3m 优先于 7m，3m覆盖7m，二者都为0时关闭喇叭。
-    // 关联：2=3m, 1=7m, 0=OFF
-    uint16_t target_mode = 0;
-
+    // 1. 获取目标模式：3m 优先于 7m，0 为关闭。
+    uint16_t raw_target_mode = 0;
     if (modbus_registers[CMD_BUZZER_3m] == 1)
     {
-        target_mode = 2;
+        raw_target_mode = 2;
     }
     else if (modbus_registers[CMD_BUZZER_7m] == 1)
     {
-        target_mode = 1;
-    }
-    else
-    {
-        target_mode = 0;
+        raw_target_mode = 1;
     }
 
-    // 只在变化时执行
-    // static buzzer_mode_t current = BUZZER_OFF;
-    // 心跳掉电时，STATUS_BUZZER 会被清 0
+    // 定义状态机状态
+    typedef enum {
+        STATE_IDLE = 0,
+        STATE_BUSY
+    } buzzer_state_t;
+
+    static buzzer_state_t state = STATE_IDLE;
+    static TickType_t busy_start_tick = 0;
+    
+    // 语音单次播放的最长耗时（单位：毫秒）
+    const uint32_t VOICE_PLAY_TIME_MS = 5300; 
+
+    // ================= 状态机处理 =================
+
+    // 如果当前是 BUSY 状态，判断是否需要退出
+    if (state == STATE_BUSY)
+    {
+        if ((xTaskGetTickCount() - busy_start_tick) >= pdMS_TO_TICKS(VOICE_PLAY_TIME_MS))
+        {
+            state = STATE_IDLE;
+        }
+        else
+        {
+            return;
+        }
+    }
+
+    // 当前处于 IDLE 状态，判断是否需要下发指令
     uint16_t current_mode = modbus_registers[STATUS_BUZZER];
 
-    if (target_mode == current_mode)
-        return;
-    uint32_t err = 0;
-    
-if (target_mode == 2) // 执行开启 3M
+    // 如果没检测到人，且喇叭状态也已经是关闭的，那就什么都不做
+    if (raw_target_mode == 0 && current_mode == 0)
     {
-        telegram[1].u16RegAdd = 0x0008;
+        return;
+    }
+
+    uint32_t err = 0;
+
+    // 根据检测结果发送动作
+    if (raw_target_mode == 2) 
+    {
+        // 触发 3M 报警
+        telegram[1].u16RegAdd = 0x0003;
         telegram[1].u16reg[0] = 0x0009;
         ModbusQuery(&bms_sound_light_app, telegram[1]);
         err = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
@@ -320,13 +345,18 @@ if (target_mode == 2) // 执行开启 3M
         if (err != OP_OK_QUERY) {
             LOGD("BUZZER_3M write fail, retrying...\n");
         } else {
-            LOGD("BUZZER_3M write success\n");
-            modbus_registers[STATUS_BUZZER] = 2; // 【关键】发送成功才将状态登记为 2
+            LOGD("BUZZER_3M write success. Entering BUSY.\n");
+            modbus_registers[STATUS_BUZZER] = 2;
+            
+            // 进入 BUSY 状态，并记录起始时间戳
+            state = STATE_BUSY;
+            busy_start_tick = xTaskGetTickCount();
         }
     }
-    else if (target_mode == 1) // 执行开启 7M
+    else if (raw_target_mode == 1) 
     {
-        telegram[1].u16RegAdd = 0x0008;
+        // 触发 7M 报警
+        telegram[1].u16RegAdd = 0x0003;
         telegram[1].u16reg[0] = 0x0008;
         ModbusQuery(&bms_sound_light_app, telegram[1]);
         err = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
@@ -334,12 +364,17 @@ if (target_mode == 2) // 执行开启 3M
         if (err != OP_OK_QUERY) {
             LOGD("BUZZER_7M write fail, retrying...\n");
         } else {
-            LOGD("BUZZER_7M write success\n");
-            modbus_registers[STATUS_BUZZER] = 1; // 发送成功才将状态登记为 1
+            LOGD("BUZZER_7M write success. Entering BUSY.\n");
+            modbus_registers[STATUS_BUZZER] = 1;
+            
+            // 进入 BUSY 状态，并记录起始时间戳 
+            state = STATE_BUSY;
+            busy_start_tick = xTaskGetTickCount();
         }
     }
-    else // 执行关闭 (OFF)
+    else 
     {
+        // 发送关闭命令（或者停止指令）收尾，确保寄存器状态归零
         telegram[1].u16RegAdd = 0x000E;
         telegram[1].u16reg[0] = 0x0000;
         ModbusQuery(&bms_sound_light_app, telegram[1]);
@@ -348,8 +383,8 @@ if (target_mode == 2) // 执行开启 3M
         if (err != OP_OK_QUERY) {
             LOGD("BUZZER_SOUND_STOP write fail, retrying...\n");
         } else {
-            LOGD("BUZZER_SOUND_STOP write success\n");
-            modbus_registers[STATUS_BUZZER] = 0; // 发送成功才将状态清 0
+            LOGD("BUZZER_SOUND_STOP write success. System cleared.\n");
+            modbus_registers[STATUS_BUZZER] = 0;
         }
     }
 }
