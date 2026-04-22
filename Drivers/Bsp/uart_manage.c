@@ -27,26 +27,26 @@ static inline uintptr_t dma_align_up_32(uintptr_t addr)
 
 static inline void dma_clean_cache_by_addr(const void *addr, uint32_t len)
 {
-#if defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
-  uintptr_t start = dma_align_down_32((uintptr_t)addr);
-  uintptr_t end   = dma_align_up_32((uintptr_t)addr + len);
-  SCB_CleanDCache_by_Addr((uint32_t *)start, (int32_t)(end - start));
-#else
+// #if defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+//   uintptr_t start = dma_align_down_32((uintptr_t)addr);
+//   uintptr_t end   = dma_align_up_32((uintptr_t)addr + len);
+//   SCB_CleanDCache_by_Addr((uint32_t *)start, (int32_t)(end - start));
+// #else
   (void)addr;
   (void)len;
-#endif
+// #endif
 }
 
 static inline void dma_invalidate_cache_by_addr(const void *addr, uint32_t len)
 {
-#if defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
-  uintptr_t start = dma_align_down_32((uintptr_t)addr);
-  uintptr_t end   = dma_align_up_32((uintptr_t)addr + len);
-  SCB_InvalidateDCache_by_Addr((uint32_t *)start, (int32_t)(end - start));
-#else
+// #if defined (__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+//   uintptr_t start = dma_align_down_32((uintptr_t)addr);
+//   uintptr_t end   = dma_align_up_32((uintptr_t)addr + len);
+//   SCB_InvalidateDCache_by_Addr((uint32_t *)start, (int32_t)(end - start));
+// #else
   (void)addr;
   (void)len;
-#endif
+// #endif
 }
 
 static int uart_manage_find_slot_by_huart(UART_HandleTypeDef *huart)

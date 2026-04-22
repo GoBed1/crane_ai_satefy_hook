@@ -54,7 +54,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOE, LED1_Pin|LED2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, H_B_LED_Pin|GPIO_PIN_15, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, H_B_LED_Pin|RELAY_1_PIN_Pin|RELAY_2_PIN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPS_EN_GPIO_Port, GPS_EN_Pin, GPIO_PIN_SET);
@@ -66,8 +66,8 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : H_B_LED_Pin PD15 GPS_EN_Pin */
-  GPIO_InitStruct.Pin = H_B_LED_Pin|GPIO_PIN_15|GPS_EN_Pin;
+  /*Configure GPIO pins : H_B_LED_Pin RELAY_1_PIN_Pin RELAY_2_PIN_Pin GPS_EN_Pin */
+  GPIO_InitStruct.Pin = H_B_LED_Pin|RELAY_1_PIN_Pin|RELAY_2_PIN_Pin|GPS_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

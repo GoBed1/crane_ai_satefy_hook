@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "dma.h"
+#include "iwdg.h"
 #include "rtc.h"
 #include "usart.h"
 #include "gpio.h"
@@ -28,7 +29,6 @@
 /* USER CODE BEGIN Includes */
 #include "board.h"
 #include "printf_redirect.h"
-#include "async_logger.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,7 +62,38 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void AutoConfig_IWDG_OptionBytes(void)
+{
+    FLASH_OBProgramInitTypeDef OBInit;
+    HAL_FLASHEx_OBGetConfig(&OBInit);
 
+    // 检查 IWDG 在 Standby 或 Stop 模式下是否为 ACTIVE (活跃/运行) 状态
+    if (((OBInit.USERConfig & OB_IWDG_STDBY_ACTIVE) == OB_IWDG_STDBY_ACTIVE) ||
+        ((OBInit.USERConfig & OB_IWDG_STOP_ACTIVE) == OB_IWDG_STOP_ACTIVE))
+    {
+        printf("[INFO] Updating Option Bytes to FREEZE IWDG in Sleep mode...\r\n");
+        
+        HAL_FLASH_Unlock();
+        HAL_FLASH_OB_Unlock();
+
+        OBInit.OptionType = OPTIONBYTE_USER;
+        OBInit.USERType   = OB_USER_IWDG_STDBY | OB_USER_IWDG_STOP; 
+        OBInit.USERConfig = OB_IWDG_STDBY_FREEZE | OB_IWDG_STOP_FREEZE;
+
+        if (HAL_FLASHEx_OBProgram(&OBInit) != HAL_OK)
+        {
+            printf("[ERROR] Option Bytes Write Failed!\r\n");
+            HAL_FLASH_OB_Lock();
+            HAL_FLASH_Lock();
+            return;
+        }
+        printf("[INFO] OB Updated. Rebooting!\r\n");
+        HAL_FLASH_OB_Launch(); // 执行这句会引发系统硬件复位重启
+        
+        HAL_FLASH_OB_Lock();
+        HAL_FLASH_Lock();
+    }
+}
 /* USER CODE END 0 */
 
 /**
@@ -86,6 +117,8 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
+  AutoConfig_IWDG_OptionBytes();// 自动配置看门狗休眠冻结（第一次烧录新板子走到这里会重启一次，后续正常）
+  __HAL_DBGMCU_FREEZE_IWDG1();// 调试器暂停时，自动暂停看门狗（防止用 ST-Link 打断点单步调试时板子一直复位）
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -105,6 +138,7 @@ int main(void)
   MX_USART3_UART_Init();
   MX_UART5_Init();
   MX_RTC_Init();
+  MX_IWDG1_Init();
   /* USER CODE BEGIN 2 */
   init_app();
   /* USER CODE END 2 */
@@ -125,9 +159,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    printf("We should never get here as control is now taken by the scheduler\r\n");
-    show_heartbeat();
-    HAL_Delay(1000);
+    Error_Handler();
   }
   /* USER CODE END 3 */
 }
@@ -159,9 +191,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE
+                              |RCC_OSCILLATORTYPE_LSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 5;
@@ -260,6 +294,8 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  __set_FAULTMASK(1);
+  NVIC_SystemReset();
   while (1)
   {
     

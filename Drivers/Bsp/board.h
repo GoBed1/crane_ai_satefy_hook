@@ -10,14 +10,18 @@ extern "C"
 {
 #endif
 
-
 #define MUTEX_DECLARE(mutex) unsigned long mutex
 #define MUTEX_INIT(mutex)    do{mutex = 0;}while(0)
 #define MUTEX_LOCK(mutex)    do{__disable_irq();}while(0)
 #define MUTEX_UNLOCK(mutex)  do{__enable_irq();}while(0)
 
-
-
+// -看门狗打卡标志位 
+#define TASK_AI_SAFY_ALIVE    (1 << 0)
+#define TASK_GPS_ALIVE        (1 << 1)
+#define TASK_RELAY_ALIVE      (1 << 2)
+#define TASK_RFID_ALIVE       (1 << 3)  
+// 需要打卡的任务总和 (二进制 0000 1111 = 0x0F)
+#define TASK_ALL_ALIVE        (TASK_AI_SAFY_ALIVE | TASK_GPS_ALIVE | TASK_RELAY_ALIVE | TASK_RFID_ALIVE)
 
 /* Hardware Configuration */
 #define LED1_PORT GPIOE
@@ -59,7 +63,6 @@ extern "C"
 #endif // ENABLE_ENCODER_TASK
 
   uint32_t get_time_ms(void);
-  void show_heartbeat(void);
   void init_app(void);
 
 #ifdef __cplusplus

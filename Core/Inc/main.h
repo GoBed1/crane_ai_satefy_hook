@@ -63,6 +63,10 @@ void Error_Handler(void);
 #define LED2_GPIO_Port GPIOE
 #define H_B_LED_Pin GPIO_PIN_10
 #define H_B_LED_GPIO_Port GPIOD
+#define RELAY_1_PIN_Pin GPIO_PIN_14
+#define RELAY_1_PIN_GPIO_Port GPIOD
+#define RELAY_2_PIN_Pin GPIO_PIN_15
+#define RELAY_2_PIN_GPIO_Port GPIOD
 #define GPS_EN_Pin GPIO_PIN_3
 #define GPS_EN_GPIO_Port GPIOD
 
